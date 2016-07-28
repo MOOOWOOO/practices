@@ -112,10 +112,13 @@ def parser_list_to_tree(array):
             else:
                 tree.append(item)
         else:
-            if OPERATOR.dot in item:
-                item = float(item)
+            if isinstance(item, str):
+                if OPERATOR.dot in item:
+                    item = float(item)
+                else:
+                    item = int(item)
             else:
-                item = int(item)
+                pass
             tree.append(item)
     return tree
 
