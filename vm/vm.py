@@ -1,7 +1,28 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-running = True
+RUNNING = True
+STACK_BOTTOM = 0
+STACK_LENGTH = 10
+STACK = [None] * STACK_LENGTH
+PROGRAM = list()
+
+ip = 0  # instruction pointer
+sp = -1  # stack pointer
+
+ERROR_MSG = {
+    'NEED_REGISTER': '*** registers error: need registers',
+    'NEED_NUMBER': '*** number error: need numbers',
+    'NEED_STACK': '*** stack error: need stack',
+    'NULL_STACK': '*** stack error: stack is empty',
+    'FULL_STACK': '*** stack error: stack overflow',
+}
+
+DATA_STYLE = {
+    'NUM': [int, float, ],
+    'STR': [str, ],
+    'SET': [set, list, dict],
+}
 
 
 def push_value():
@@ -11,21 +32,26 @@ def push_value():
     global sp
 
     sp += 1
+    if sp >= len(STACK):
+        return False, ERROR_MSG['FULL_STACK']
     ip += 1
 
     STACK[sp] = PROGRAM[ip]
+
+    return True, STACK[sp]
 
 
 def pop_value():
     global STACK
     global sp
+
+    if sp < STACK_BOTTOM:
+        return False, ERROR_MSG['NULL_STACK']
+
     val = STACK[sp]
-    STACK.remove(STACK[sp])
     sp -= 1
 
-    print(val)
-
-    return val
+    return True, val
 
 
 def add():
@@ -34,94 +60,71 @@ def add():
     val_1 = STACK[sp]
     sp -= 1
 
+    if type(val_1) not in DATA_STYLE['NUM']:
+        return False, ERROR_MSG['NEED_NUMBER']
+
     val_2 = STACK[sp]
     sp -= 1
+
+    if type(val_2) not in DATA_STYLE['NUM']:
+        return False, ERROR_MSG['NEED_NUMBER']
 
     val = val_1 + val_2
     sp += 1
 
     STACK[sp] = val
-
+    return True, STACK[sp]
 
 
 def set_value():
     global ip
     global PROGRAM
     global OPERATOR
-    global ERROR_MSG
 
     ip += 1
     reg = PROGRAM[ip]
 
-    if reg in OPERATOR['REG']:
+    if reg in OPERATOR['REGISTERS']:
         pass
     else:
-        return ERROR_MSG['REG_ERROR']
+        return False, ERROR_MSG['NEED_REGISTER']
 
     ip += 1
     val = PROGRAM[ip]
     if type(val) in [int, float]:
         OPERATOR[reg] = val
+        return True, OPERATOR[reg]
     else:
-        return ERROR_MSG['NUMBER_ERROR']
+        return False, ERROR_MSG['NEED_NUMBER']
 
 
 def mov():
     global ip
     global PROGRAM
     global OPERATOR
-    global ERROR_MSG
 
     ip += 1
     reg_1 = PROGRAM[ip]
 
-    if reg_1 in OPERATOR['REG']:
+    if reg_1 in OPERATOR['REGISTERS']:
         pass
     else:
-        return ERROR_MSG['REG_ERROR']
+        return False, ERROR_MSG['NEED_REGISTER']
 
     ip += 1
     reg_2 = PROGRAM[ip]
-    if reg_2 in OPERATOR['REG'] or type(reg_2) in [int, float]:
+    if reg_2 in OPERATOR['REGISTERS'] or type(reg_2) in [int, float]:
         reg_1 = reg_2
+        return True, reg_1
     else:
-        return '{0}\nor\n{1}'.format(ERROR_MSG['REG_ERROR'], ERROR_MSG['NUMBER_ERROR'])
+        return False, '{0}\nor\n{1}'.format(ERROR_MSG['NEED_REGISTER'], ERROR_MSG['NEED_NUMBER'])
 
 
 def hlt():
-    global running
-    running = False
+    global RUNNING
+    RUNNING = False
+    return True, RUNNING
 
-
-ERROR_MSG = {
-    'REG_ERROR': '*** registers error: need registers',
-    'NUMBER_ERROR': '*** number error: need numbers',
-    'STACK_ERROR': '*** stack error: need stack'
-}
-
-REGISTERS = {
-    'A': list(),
-    'B': list(),
-    'C': list(),
-    'D': list(),
-    'SP': list(),
-    'PC': list(),
-    'NUM': list(),
-}
-
-# PROGRAM = list()
-PROGRAM = [
-    'PUSH', 1,
-    'PUSH', 2,
-    'ADD',
-    'POP',
-    'HLT'
-]
-
-STACK = [-1]*100
-
-ip = 0  # instruction pointer
-sp = -1  # stack pointer
 
 OPERATOR = {
     'PUSH': push_value,
@@ -130,38 +133,46 @@ OPERATOR = {
     'SET': set_value,
     'MOV': mov,
     'HLT': hlt,
-    'REG': {
-        'REG_A': REGISTERS['A'],
-        'REG_B': REGISTERS['B'],
-        'REG_C': REGISTERS['C'],
-        'REG_D': REGISTERS['D'],
-        'REG_SP': REGISTERS['SP'],
-        'REG_PC': REGISTERS['PC'],
+    'REGISTERS': {
+        'A': 0,
+        'B': 0,
+        'C': 0,
+        'D': 0,
+        'SP': 0,
+        'PC': 0,
     },
 }
 
 
-def main():
-    global running
+def vm_main(PROG):
     global OPERATOR
     global ip
-    global REGISTERS
     global PROGRAM
 
-    program_lenght = len(PROGRAM)
-    result=None
-    while running and ip <= program_lenght:
-        if PROGRAM[ip] in OPERATOR:
-            op = PROGRAM[ip]
-            result=OPERATOR[op]()
-        else:
-            # this branch will never been reached.
-            REGISTERS['A'] = PROGRAM[ip]
+    PROGRAM = PROG
 
-        ip += 1
+    program_length = len(PROGRAM)
+    result = None
+    data = None
+    while RUNNING and ip < program_length:
+        op = PROGRAM[ip]
+        result, data = OPERATOR[op]()
+        if result:
+            ip += 1
+        else:
+            data = '{msg}\nbroken on line {ip}.'.format(msg=data, ip=ip)
+            break
+
     global STACK
-    return result
+    return result, data, STACK
 
 
 if __name__ == '__main__':
-    print(main())
+    PROGRAM = [
+        'PUSH', 1,
+        'PUSH', 2,
+        'ADD',
+        'POP',
+        'HLT'
+    ]
+    print(vm_main(PROGRAM))
