@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
+from commands import bc_oper_reg_map
 from commands import prog_bc_map
 from commands import registers
 
@@ -21,7 +22,14 @@ def trans_prog_to_asm(prog):
             sub_prog = item
             res = trans_prog_to_asm(sub_prog)
             if res[0]:
-                asm += res[3]
+                sub_asm = res[3]
+                oper = sub_asm.split()[0]
+                asm = '{sub_asm}{asm}'.format(sub_asm=sub_asm, asm=asm)
+                if oper in bc_oper_reg_map:
+                    tmp_reg = bc_oper_reg_map[oper]
+                    asm += tmp_reg
+                else:
+                    pass
             else:
                 return res
         elif item_type == str:
