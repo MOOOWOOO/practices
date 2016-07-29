@@ -52,10 +52,20 @@ prog_bc_map = {
     '&':      'and',
     '|':      'or',
     '!':      'not',
-    'if':     'cmp',
-    '=':      'jpe',
-    '<':      'jpl',
-    '>':      'jpg',
+    'if':     {
+        '=':  'not jpe',
+        '!=': 'jpe',
+        '<':  'jpg',
+        '<=': 'not jpl',
+        '>':  'jpl',
+        '>=': 'not jpg',
+    },
+    '=':      'cmp',
+    '!=':     'cmp',
+    '<':      'cmp',
+    '<=':     'cmp',
+    '>':      'cmp',
+    '>=':     'cmp',
 }
 
 bc_oper_reg_map = {
@@ -66,11 +76,10 @@ bc_oper_reg_map = {
     'and': 'rb',
     'or':  'rb',
     'not': 'rb',
-    'cmp': 'rc',
-    'jmp': 'rd',
-    'jpe': 'rd',
-    'jpl': 'rd',
-    'jpg': 'rd',
+    'jmp': 'ip',
+    'jpe': 'ip',
+    'jpl': 'ip',
+    'jpg': 'ip',
 }
 
 bc_mc_map = {

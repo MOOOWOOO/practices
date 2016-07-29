@@ -9,9 +9,9 @@ from commands import registers_mc_map
 
 def translater_main(prog):
     asm = trans_prog_to_asm(prog=prog)
-    mc = trans_asm_to_mc(asm[3])
-    return True, asm, mc
-    # return asm
+    # mc = trans_asm_to_mc(asm[3])
+    # return True, asm, mc
+    return asm
 
 
 def trans_prog_to_asm(prog):
@@ -31,14 +31,18 @@ def trans_prog_to_asm(prog):
                 asm = '{sub_asm} {asm}'.format(sub_asm=sub_asm, asm=asm)
                 if oper in bc_oper_reg_map:
                     tmp_reg = bc_oper_reg_map[oper]
-                    asm += tmp_reg
+                    asm += '{reg} '.format(reg=tmp_reg)
                 else:
                     pass
             else:
                 return res
         elif item_type == str:
             if item in prog_bc_map:
-                asm += '{bc} '.format(bc=prog_bc_map[item])
+                if item == 'if':
+                    bc = prog_bc_map[item][prog[i + 1][0]]
+                else:
+                    bc = prog_bc_map[item]
+                asm += '{bc} '.format(bc=bc)
             elif item in registers:
                 asm += '{registers} '.format(registers=item)
             else:
@@ -70,6 +74,8 @@ if __name__ == '__main__':
     prog0 = ['define', 'ra', 1]
     prog1 = ['define', 'rb', 2]
     prog2 = ['define', 'rc', ['+', 'ra', 'rb']]
+    prog3 = ['if', ['>=', 'ra', 'rb'], 'ra', 'rb']
     res = []
-    for prog in [prog0, prog1, prog2]:
+    for prog in [prog0, prog1, prog2, prog3]:
         print(translater_main(prog))
+    # print(translater_main(prog3))
