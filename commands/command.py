@@ -102,6 +102,38 @@ registers_mc_map = {
     'of': '00000011',
 }
 
+
+enter_func = '''
+save mem ra
+save mem rb
+save mem rc
+save mem rd
+save mem zf
+save mem sf
+save mem of
+save mem sp
+save mem ip
+; mem-func2 怎么获取到？
+load ip mem-func2
+jmp
+load ra mem
+load rb mem
+load rc mem
+load rd mem
+load zf mem
+load sf mem
+load of mem
+load sp mem
+'''
+
+return_func = '''
+load ip mem
+; 跳过 enter_func 中 save mem ip 后剩余用于进入函数调用的步骤，即回到 load ra mem 一步
+add ip 3
+load ip ra
+jmp
+'''
+
 high_level_prog = '''
 [define a 1]
 [define b 2]
