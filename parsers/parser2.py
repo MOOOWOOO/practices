@@ -66,9 +66,8 @@ def parser_array_to_str(array):
 
 def lexer_str_to_list(string):
     array = []
-    sub_array = []
     tmp_string = str()
-    string_lenght = len(string)
+    string_length = len(string)
 
     def push_tmp_string(array, tmp_string):
         if len(tmp_string):
@@ -78,7 +77,7 @@ def lexer_str_to_list(string):
             pass
         return array, tmp_string
 
-    for item in range(string_lenght):
+    for item in range(string_length):
         char = string[item]
         if OPERATOR.is_split(char):
             array, tmp_string = push_tmp_string(array, tmp_string)
