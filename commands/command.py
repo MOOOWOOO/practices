@@ -45,6 +45,7 @@ registers = [
 
 prog_bc_map = {
     'define': 'load',
+    'tag':    'save',
     '+':      'add',
     '-':      'sub',
     '*':      'mul',
@@ -60,6 +61,7 @@ prog_bc_map = {
         '>':  'jpl',
         '>=': 'not jpg',
     },
+    'goto':   'jmp',
     '=':      'cmp',
     '!=':     'cmp',
     '<':      'cmp',
