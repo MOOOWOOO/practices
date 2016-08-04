@@ -30,7 +30,7 @@ def trans_prog_to_asm(prog):
             if res[0]:
                 sub_asm = res[3]
                 oper = sub_asm.split()[0]
-                asm = '{sub_asm} {asm}'.format(sub_asm=sub_asm, asm=asm)
+                asm += '{sub_asm} '.format(sub_asm=sub_asm)
                 if oper in bc_oper_reg_map:
                     tmp_reg = bc_oper_reg_map[oper]
                     asm += '{reg} '.format(reg=tmp_reg)
@@ -40,17 +40,20 @@ def trans_prog_to_asm(prog):
                 return res
         elif item_type == str:
             if item in prog_bc_map:
-                bc = prog_bc_map[item]
+                if item == 'if':
+                    bc = prog_bc_map[item][prog[i - 1][0]]
+                else:
+                    bc = prog_bc_map[item]
                 asm += '{bc} '.format(bc=bc)
             elif item in registers:
                 asm += '{registers} '.format(registers=item)
             else:
-                return False, prog, i, ''
+                asm += '{comment} '.format(comment=item)
         else:
             # don't translate DEC TO BIN here
             asm += '{num} '.format(num=item)
 
-    return True, prog, prog_length + sub_prog_length, asm.strip()
+    return True, prog, prog_length + sub_prog_length, asm
 
 
 def rearrange_while(prog):
@@ -76,11 +79,7 @@ def rearrange_while(prog):
             new_prog.append(item)
 
     if len(tag) == 32 and goto_time == 3:
-        if isinstance(new_prog[-1], list):
-            pass
-        else:
-            new_prog[-1] = [new_prog[-1]]
-        new_prog[-1].append(['goto', tag])
+        new_prog[-1] = [new_prog[-1], ['goto', tag]]
 
     return new_prog
 
@@ -92,16 +91,17 @@ def rearrange_if(prog):
     goto_time = 0
 
     for i in range(prog_length):
-        goto_time += 1
+        if goto_time:
+            goto_time += 1
 
         if continue_time:
             continue_time -= 1
             continue
 
         item = prog[i]
-
         if isinstance(item, str):
             if item == 'if':
+                goto_time += 1
                 new_prog.append(prog[i + 1])
                 new_prog.append(item)
                 continue_time += 1
@@ -145,16 +145,10 @@ if __name__ == '__main__':
         'if', ['>=', 'ra', 'rb'],
         [
             'if', ['=', 10, 10],
-            [
-                '*', 'rd', 20
-            ],
-            [
-                '/', 'rd', 20
-            ]
-        ],
-        [
-            'rb'
-        ]
+            ['*', 'rd', 20],  # true
+            ['/', 'rd', 20]  # false
+        ],  # true
+        ['rb']  # false
     ]
 
     res3 = [
@@ -163,18 +157,72 @@ if __name__ == '__main__':
         [
             ['=', 10, 10],
             'if',
-            ['*', 'rd', 20],
+            ['*', 'rd', 20],  # true
             [
                 ['tag', 'ba4450e859ea11e69ea7000c29c59316'],
-                ['/', 'rd', 20]]
-        ],
+                ['/', 'rd', 20]
+            ]  # false
+        ],  # true
         [
             ['tag', 'ba4450e959ea11e69ea7000c29c59316'],
             ['rb']
-        ]
+        ]  # false
     ]
 
     prog4 = [
+        'if', ['>=', 'ra', 'rb'],
+        [
+            'while', ['=', 10, 10],
+            [
+                ['*', 'rd', 20],
+                ['/', 'rd', 20]
+            ],
+        ],  # ture
+        ['rb']  # false
+    ]
+
+    res4 = [
+        ['>=', 'ra', 'rb'], 'if',
+        [
+            ['tag', '994b1f945a0c11e69ea7000c29c59316'], ['=', 10, 10], 'if',  # while
+            [
+                [
+                    ['*', 'rd', 20], ['/', 'rd', 20]
+                ],
+                ['goto', '994b1f945a0c11e69ea7000c29c59316']
+            ]  # loop body
+        ],  # true
+        [
+            ['tag', '994b1f955a0c11e69ea7000c29c59316'],
+            ['rb']
+        ]  # false
+    ]
+
+    prog5 = [
+        'while', ['>=', 'ra', 'rb'],
+        [
+            'if', ['=', 10, 10],
+            ['*', 'rd', 20],
+            ['/', 'rd', 20]
+        ]
+    ]
+
+    res5 = [
+        ['tag', '19a497745a0d11e69ea7000c29c59316'], ['>=', 'ra', 'rb'], 'if',  # while,
+        [
+            [
+                ['=', 10, 10], 'if',
+                ['*', 'rd', 20],  # true
+                [
+                    ['tag', '19a497755a0d11e69ea7000c29c59316'],
+                    ['/', 'rd', 20]
+                ]  # false
+            ],
+            ['goto', '19a497745a0d11e69ea7000c29c59316']
+        ]  # loop body
+    ]
+
+    prog6 = [
         'while', ['>', 'ra', 'rb'],
         [
             'while', ['>', 'rc', 'rd'],
@@ -191,60 +239,105 @@ if __name__ == '__main__':
         ]
     ]
 
-    res4 = [
-        ['tag', '12345678901234567890123456789012'],
-        'if', ['>', 'ra', 'rb'],
+    res6 = [
+        ['tag', '6a98dbb45a0d11e69ea7000c29c59316'], ['>', 'ra', 'rb'], 'if',  # while
         [
-            ['tag', '12345678901234567890123456789012'],
+            [
+                ['tag', '6a98dbb55a0d11e69ea7000c29c59316'], ['>', 'rc', 'rd'], 'if',  # while
+                [
+                    [
+                        ['load', 'ip', 'mem'],
+                        [
+                            ['tag', '6a98dbb65a0d11e69ea7000c29c59316'], ['<', 'ra', 10], 'if', # while
+                            [
+                                [
+                                    ['save', 'ra'],
+                                    ['load', 'ra', 'ip']
+                                ],
+                                ['goto', '6a98dbb65a0d11e69ea7000c29c59316']
+                            ] # loop body
+                        ]
+                    ],
+                    ['goto', '6a98dbb55a0d11e69ea7000c29c59316']
+                ] # loop body
+            ],
+            ['goto', '6a98dbb45a0d11e69ea7000c29c59316']
+        ] # loop body
+    ]
+
+    prog7 = [
+        'while', ['>', 'ra', 'rb'],
+        [
             'if', ['>', 'rc', 'rd'],
             [
                 ['load', 'ip', 'mem'],
                 [
-                    ['tag', '12345678901234567890123456789012'],
-                    'if', ['<', 'ra', 10],
+                    'while', ['<', 'ra', 10],
                     [
                         ['save', 'ra'],
-                        ['load', 'ra', 'ip'],
-                        ['goto', '12345678901234567890123456789012']
+                        ['load', 'ra', 'ip']
                     ]
-                ],
-                ['goto', '12345678901234567890123456789012']
+                ]
             ],
-            ['goto', '12345678901234567890123456789012']
-        ]
-    ]
-
-    res5 = [
-        ['tag', 'c09c08c0599511e682e33c46d8310838'],
-        ['>', 'ra', 'rb'],
-        'if',
-        [
-            ['tag', 'c09ca514599511e68de23c46d8310838'],
-            ['>', 'rc', 'rd'],
-            'if',
             [
-                ['load', 'ip', 'mem'],
+                'if', ['!=', 'ra', 20],
+                ['save', 'ip', 500],
                 [
-                    ['tag', 'c09cb8a2599511e697cd3c46d8310838'],
-                    ['<', 'ra', 10],
-                    'if',
-                    [
-                        ['save', 'ra'],
-                        ['load', 'ra', 'ip'],
-                        ['goto', 'c09cb8a2599511e697cd3c46d8310838']
-                    ]
-                ],
-                ['goto', 'c09ca514599511e68de23c46d8310838']
-            ],
-            ['goto', 'c09c08c0599511e682e33c46d8310838']
+                    'while', ['<=', 10, 15],
+                    ['load', 'ip', 'rd']
+                ]
+            ]
         ]
     ]
 
-    for prog in [prog4, prog0, prog1, prog2, prog3]:
-        print(translater_main(prog))
-    print('\n\n\n')
-    print('handle if:\n', rearrange_if(prog3))
-    print('\n\n\n')
-    print('handle while:\n', rearrange_while(prog4))
-    print('\n\n\n')
-    print('handle if after while:\n', rearrange_if(rearrange_while(prog4)))
+    res7 = [
+        ['tag', '6a98dbb75a0d11e69ea7000c29c59316'], ['>', 'ra', 'rb'], 'if',  # while
+        [
+            [
+                ['>', 'rc', 'rd'], 'if',
+                [
+                    ['load', 'ip', 'mem'],
+                    [
+                        ['tag', '6a98dbb85a0d11e69ea7000c29c59316'], ['<', 'ra', 10], 'if',
+                        [
+                            [
+                                ['save', 'ra'],
+                                ['load', 'ra', 'ip']
+                            ],
+                            ['goto', '6a98dbb85a0d11e69ea7000c29c59316']
+                        ]  # loop body
+                    ]
+                ],  # true
+                [
+                    ['tag', '6a98dbbb5a0d11e69ea7000c29c59316'],
+                    [
+                        ['!=', 'ra', 20], 'if',
+                        ['save', 'ip', 500],  # true
+                        [
+                            ['tag', '6a98dbba5a0d11e69ea7000c29c59316'],
+                            [
+                                ['tag', '6a98dbb95a0d11e69ea7000c29c59316'], ['<=', 10, 15], 'if',  # while
+                                [
+                                    ['load', 'ip', 'rd'],
+                                    ['goto', '6a98dbb95a0d11e69ea7000c29c59316']
+                                ]  # loop body
+                            ]
+                        ]  # false
+                    ]
+                ]  # false
+            ],
+            ['goto', '6a98dbb75a0d11e69ea7000c29c59316']
+        ]  # loop body
+    ]
+
+    for prog in [prog0, prog1, prog2, prog3, prog4, prog5, prog6, prog7]:
+        res_while = rearrange_while(prog)
+        print('handle while:\n', res_while)
+        print('\n\n\n')
+        res_if = rearrange_if(res_while)
+        print('handle if:\n', res_if)
+        print('\n\n\n')
+        print('handle if after while:\n', res_if)
+        print('\n\n\n')
+        print(translater_main(res_if))
+        print('\n\n\n-------')
