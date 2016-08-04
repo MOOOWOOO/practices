@@ -65,7 +65,7 @@ def rearrange_while(prog):
         if isinstance(item, str):
             if item == 'while':
                 tag = u1().hex
-                tag = '12345678901234567890123456789012'
+                # tag = '12345678901234567890123456789012'
                 new_prog.append(['tag', tag])
                 new_prog.append('if')
             else:
@@ -92,12 +92,13 @@ def rearrange_if(prog):
     goto_time = 0
 
     for i in range(prog_length):
+        goto_time += 1
+
         if continue_time:
             continue_time -= 1
             continue
 
         item = prog[i]
-        goto_time += 1
 
         if isinstance(item, str):
             if item == 'if':
@@ -110,6 +111,11 @@ def rearrange_if(prog):
             new_prog.append(rearrange_if(item))
         else:
             new_prog.append(item)
+
+    if goto_time == 4:
+        tag = u1().hex
+        # tag = '12345678901234567890123456789012'
+        new_prog[-1] = [['tag', tag], new_prog[-1]]
 
     return new_prog
 
@@ -134,6 +140,7 @@ if __name__ == '__main__':
     prog0 = ['define', 'ra', 1]
     prog1 = ['define', 'rb', 2]
     prog2 = ['define', 'rc', ['+', 'ra', 'rb']]
+
     prog3 = [
         'if', ['>=', 'ra', 'rb'],
         [
@@ -157,11 +164,15 @@ if __name__ == '__main__':
             ['=', 10, 10],
             'if',
             ['*', 'rd', 20],
-            ['/', 'rd', 20]
+            [
+                ['tag', 'ba4450e859ea11e69ea7000c29c59316'],
+                ['/', 'rd', 20]]
         ],
-        ['rb']
+        [
+            ['tag', 'ba4450e959ea11e69ea7000c29c59316'],
+            ['rb']
+        ]
     ]
-    r = []
 
     prog4 = [
         'while', ['>', 'ra', 'rb'],
@@ -232,8 +243,8 @@ if __name__ == '__main__':
     for prog in [prog4, prog0, prog1, prog2, prog3]:
         print(translater_main(prog))
     print('\n\n\n')
-    print('handle if:\n',rearrange_if(prog3))
+    print('handle if:\n', rearrange_if(prog3))
     print('\n\n\n')
-    print('handle while:\n',rearrange_while(prog4))
+    print('handle while:\n', rearrange_while(prog4))
     print('\n\n\n')
-    print('handle if after while"\n',rearrange_if(rearrange_while(prog4)))
+    print('handle if after while:\n', rearrange_if(rearrange_while(prog4)))
